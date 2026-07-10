@@ -1,0 +1,38 @@
+name: HomeBudget
+options:
+  bundleIdPrefix: com.homebudget
+targets:
+  HomeBudget:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - App
+      - Models
+      - ViewModels
+      - Views
+      - Services
+      - Mappers
+    configFiles:
+      Debug: App/Development.xcconfig
+      Release: App/Release.xcconfig
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.homebudget.app
+      GENERATE_INFOPLIST_FILE: YES
+      INFOPLIST_KEY_UILaunchScreen_Generation: YES
+      INFOPLIST_KEY_APIHost: $(API_HOST)
+      INFOPLIST_KEY_APIPort: $(API_PORT)
+      INFOPLIST_KEY_APIScheme: $(API_SCHEME)
+      DEVELOPMENT_TEAM: ""
+
+  HomeBudgetTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Tests/HomeBudgetTests
+    dependencies:
+      - target: HomeBudget
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.homebudget.app.tests
+      GENERATE_INFOPLIST_FILE: YES

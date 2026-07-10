@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package expense;
+
+option go_package = "github.com/homebudget/backend/internal/proto/expense";
+
+// Message representing a single Expense entity
+message ExpenseMessage {
+  string id = 1;
+  string title = 2;
+  double amount = 3;
+  string category = 4;
+  int64 date = 5; // Unix timestamp in seconds
+}
+
+// Request and Response for creating a new expense
+message CreateExpenseRequest {
+  string title = 1;
+  double amount = 2;
+  string category = 3;
+  int64 date = 4;
+}
+
+message CreateExpenseResponse {
+  string id = 1; // Supabase generated UUID
+}
+
+// Request and Response for fetching all expenses
+message GetExpensesRequest {}
+
+message GetExpensesResponse {
+  repeated ExpenseMessage expenses = 1;
+}
+
+// Request and Response for deleting an expense
+message DeleteExpenseRequest {
+  string id = 1;
+}
+
+message DeleteExpenseResponse {
+  bool success = 1;
+}
+
+// The ExpenseService providing CRUD operations
+service ExpenseService {
+  rpc CreateExpense (CreateExpenseRequest) returns (CreateExpenseResponse);
+  rpc GetExpenses (GetExpensesRequest) returns (GetExpensesResponse);
+  rpc DeleteExpense (DeleteExpenseRequest) returns (DeleteExpenseResponse);
+}

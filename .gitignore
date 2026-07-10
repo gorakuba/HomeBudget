@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Xcode / iOS (with XcodeGen)
+# We ignore the entire .xcodeproj because it is generated automatically from project.yml
+*.xcodeproj/
+DerivedData/
+build/
+*.xcresult
+*.xcuserstate
+xcuserdata/
+
+# Go / Backend
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+backend/.env
+backend/bin/
+
+# Local workspace backups / tool temp files
+.gemini/
+.agents/
+.idea/
+.vscode/
