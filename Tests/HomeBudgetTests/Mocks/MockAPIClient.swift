@@ -7,6 +7,8 @@ public class MockAPIClient: APIClientProtocol {
     public var mockExpenses: [Expense] = []
     public var delaySeconds: TimeInterval = 0.1
     
+    public var mockBudgetAmount: Double = 5000.0
+    
     public init() {}
     
     public func createExpense(title: String, amount: Double, category: String, date: Date) async throws -> String {
@@ -33,6 +35,21 @@ public class MockAPIClient: APIClientProtocol {
         if shouldReturnError {
             throw NSError(domain: "MockAPIClient", code: 500, userInfo: [NSLocalizedDescriptionKey: "Symulowany błąd usuwania"])
         }
+        return true
+    }
+    
+    public func fetchBudget(month: String) async throws -> Double {
+        if shouldReturnError {
+            throw NSError(domain: "MockAPIClient", code: 500, userInfo: [NSLocalizedDescriptionKey: "Symulowany błąd pobierania budżetu"])
+        }
+        return mockBudgetAmount
+    }
+    
+    public func updateBudget(month: String, amount: Double) async throws -> Bool {
+        if shouldReturnError {
+            throw NSError(domain: "MockAPIClient", code: 500, userInfo: [NSLocalizedDescriptionKey: "Symulowany błąd zapisu budżetu"])
+        }
+        mockBudgetAmount = amount
         return true
     }
 }

@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	pb "github.com/homebudget/backend/internal/proto/expense"
 	"github.com/homebudget/backend/internal/repository"
 	"github.com/homebudget/backend/internal/service"
@@ -21,15 +22,19 @@ import (
 )
 
 func main() {
+	// Load .env file from the current directory (for local development)
+	if err := godotenv.Load(); err != nil {
+		log.Println("Note: No .env file found. Using system environment variables.")
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "50051"
+		log.Fatalf("Błąd krytyczny: Zmienna środowiskowa PORT nie jest zdefiniowana. Upewnij się, że plik .env istnieje lub zmienna jest ustawiona w systemie.")
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		// Default Supabase / Postgres connection string (override via env in production)
-		dbURL = "postgres://postgres:password@localhost:5432/homebudget?sslmode=disable"
+		log.Fatalf("Błąd krytyczny: Zmienna środowiskowa DATABASE_URL nie jest zdefiniowana. Upewnij się, że plik .env istnieje lub zmienna jest ustawiona w systemie.")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -103,6 +108,40 @@ func main() {
 			return
 		}
 		resp, err := srv.DeleteExpense(r.Context(), &req)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	mux.HandleFunc("/expense.ExpenseService/GetBudget", func(w http.ResponseWriter, r *http.Request) {
+		var req pb.GetBudgetRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		resp, err := srv.GetBudget(r.Context(), &req)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	mux.HandleFunc("/expense.ExpenseService/SetBudget", func(w http.ResponseWriter, r *http.Request) {
+		var req pb.SetBudgetRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		resp, err := srv.SetBudget(r.Context(), &req)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)

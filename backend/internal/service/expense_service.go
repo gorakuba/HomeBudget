@@ -75,3 +75,37 @@ func (s *expenseServiceServer) DeleteExpense(ctx context.Context, req *pb.Delete
 
 	return &pb.DeleteExpenseResponse{Success: success}, nil
 }
+
+func (s *expenseServiceServer) GetBudget(ctx context.Context, req *pb.GetBudgetRequest) (*pb.GetBudgetResponse, error) {
+	if req.GetMonth() == "" {
+		return nil, status.Error(codes.InvalidArgument, "month cannot be empty")
+	}
+
+	budget, err := s.repo.GetBudget(ctx, req.GetMonth())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get budget: %v", err)
+	}
+
+	return &pb.GetBudgetResponse{Amount: budget.Amount}, nil
+}
+
+func (s *expenseServiceServer) SetBudget(ctx context.Context, req *pb.SetBudgetRequest) (*pb.SetBudgetResponse, error) {
+	if req.GetMonth() == "" {
+		return nil, status.Error(codes.InvalidArgument, "month cannot be empty")
+	}
+	if req.GetAmount() < 0 {
+		return nil, status.Error(codes.InvalidArgument, "budget amount cannot be negative")
+	}
+
+	budget := &models.Budget{
+		Month:  req.GetMonth(),
+		Amount: req.GetAmount(),
+	}
+
+	success, err := s.repo.SetBudget(ctx, budget)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to set budget: %v", err)
+	}
+
+	return &pb.SetBudgetResponse{Success: success}, nil
+}

@@ -2,15 +2,16 @@ import Foundation
 import SwiftUI
 
 public final class BudgetViewModel: ObservableObject {
-    @Published public var totalBudget: Double = 5000.0
+    @Published public var totalBudget: Double = 0.0
+    @Published public var selectedDate: Date = Date()
     @Published public var expenses: [Expense] = []
+    @Published public var isMovingForward: Bool = true
     @Published public var errorMessage: String? = nil
     
     private let apiClient: APIClientProtocol
     
     public init(apiClient: APIClientProtocol = GRPCExpenseClient()) {
         self.apiClient = apiClient
-        loadMockData()
     }
     
     private func loadMockData() {
@@ -30,8 +31,16 @@ public final class BudgetViewModel: ObservableObject {
         ]
     }
     
+    public var filteredExpenses: [Expense] {
+        let calendar = Calendar.current
+        return expenses.filter { expense in
+            calendar.isDate(expense.date, equalTo: selectedDate, toGranularity: .month) &&
+            calendar.isDate(expense.date, equalTo: selectedDate, toGranularity: .year)
+        }
+    }
+    
     public var spentAmount: Double {
-        expenses.reduce(0.0) { $0 + $1.amount }
+        filteredExpenses.reduce(0.0) { $0 + $1.amount }
     }
     
     public var remainingBudget: Double {
@@ -68,18 +77,81 @@ public final class BudgetViewModel: ObservableObject {
         }
     }
     
+    public var selectedMonthString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM"
+        return formatter.string(from: selectedDate)
+    }
+    
+    public var selectedMonthTitle: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "pl_PL")
+        formatter.dateFormat = "LLLL yyyy"
+        let raw = formatter.string(from: selectedDate)
+        return raw.prefix(1).uppercased() + raw.dropFirst()
+    }
+    
+    public func changeMonth(by months: Int) {
+        if let newDate = Calendar.current.date(byAdding: .month, value: months, to: selectedDate) {
+            self.selectedDate = newDate
+            fetchBudgetForSelectedMonth()
+        }
+    }
+    
+    public func fetchBudgetForSelectedMonth() {
+        let monthString = selectedMonthString
+        Task {
+            do {
+                let serverBudget = try await apiClient.fetchBudget(month: monthString)
+                await MainActor.run {
+                    withAnimation {
+                        self.totalBudget = serverBudget
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Nie udało się pobrać budżetu dla miesiąca \(monthString)."
+                }
+            }
+        }
+    }
+    
     public func fetchExpensesFromServer() {
+        let monthString = selectedMonthString
         Task {
             do {
                 let serverExpenses = try await apiClient.fetchExpenses()
+                let serverBudget = try await apiClient.fetchBudget(month: monthString)
+                
                 await MainActor.run {
                     withAnimation(.easeInOut) {
                         self.expenses = serverExpenses
+                        self.totalBudget = serverBudget
                     }
                 }
             } catch {
                 await MainActor.run {
                     self.errorMessage = "Nie udało się pobrać danych z serwera."
+                }
+            }
+        }
+    }
+    
+    public func updateBudget(_ amount: Double) {
+        let monthString = selectedMonthString
+        Task {
+            do {
+                let success = try await apiClient.updateBudget(month: monthString, amount: amount)
+                if success {
+                    await MainActor.run {
+                        withAnimation {
+                            self.totalBudget = amount
+                        }
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Nie udało się zaktualizować budżetu: \(error.localizedDescription)"
                 }
             }
         }
@@ -116,7 +188,7 @@ public final class BudgetViewModel: ObservableObject {
     
     public var categorySums: [CategorySum] {
         Category.allCases.map { category in
-            let sum = expenses.filter { $0.category == category }.reduce(0.0) { $0 + $1.amount }
+            let sum = filteredExpenses.filter { $0.category == category }.reduce(0.0) { $0 + $1.amount }
             return CategorySum(category: category, amount: sum)
         }
     }

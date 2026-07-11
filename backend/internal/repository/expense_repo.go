@@ -2,9 +2,11 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/homebudget/backend/internal/models"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -65,4 +67,35 @@ func (r *postgresExpenseRepository) Delete(ctx context.Context, id string) (bool
 		return false, fmt.Errorf("failed to delete expense: %w", err)
 	}
 	return cmdTag.RowsAffected() > 0, nil
+}
+
+func (r *postgresExpenseRepository) GetBudget(ctx context.Context, month string) (*models.Budget, error) {
+	query := `
+		SELECT month, amount, updated_at
+		FROM monthly_budgets
+		WHERE month = $1
+	`
+	var b models.Budget
+	err := r.pool.QueryRow(ctx, query, month).Scan(&b.Month, &b.Amount, &b.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return &models.Budget{Month: month, Amount: 0}, nil
+		}
+		return nil, fmt.Errorf("failed to query budget: %w", err)
+	}
+	return &b, nil
+}
+
+func (r *postgresExpenseRepository) SetBudget(ctx context.Context, budget *models.Budget) (bool, error) {
+	query := `
+		INSERT INTO monthly_budgets (month, amount, updated_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (month)
+		DO UPDATE SET amount = EXCLUDED.amount, updated_at = NOW()
+	`
+	_, err := r.pool.Exec(ctx, query, budget.Month, budget.Amount)
+	if err != nil {
+		return false, fmt.Errorf("failed to upsert budget: %w", err)
+	}
+	return true, nil
 }

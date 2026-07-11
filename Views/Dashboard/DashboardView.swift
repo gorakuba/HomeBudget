@@ -4,6 +4,8 @@ import Charts
 public struct DashboardView: View {
     @EnvironmentObject private var viewModel: BudgetViewModel
     @State private var isShowingAddExpense = false
+    @State private var isShowingBudgetAlert = false
+    @State private var budgetInput = ""
     
     public init() {}
     
@@ -61,13 +63,25 @@ public struct DashboardView: View {
                                     
                                     Spacer()
                                     
-                                    VStack(alignment: .trailing, spacing: 2) {
-                                        Text("BUDŻET")
-                                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                                            .foregroundColor(.secondary)
-                                        Text(viewModel.formatCurrency(viewModel.totalBudget))
-                                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    Button(action: {
+                                        budgetInput = String(format: "%.2f", viewModel.totalBudget)
+                                        isShowingBudgetAlert = true
+                                    }) {
+                                        VStack(alignment: .trailing, spacing: 2) {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "pencil")
+                                                    .font(.system(size: 8))
+                                                    .foregroundColor(.indigo)
+                                                Text("BUDŻET")
+                                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            Text(viewModel.formatCurrency(viewModel.totalBudget))
+                                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                                .foregroundColor(.primary)
+                                        }
                                     }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }
@@ -83,7 +97,7 @@ public struct DashboardView: View {
                                 .foregroundColor(.secondary)
                                 .tracking(1)
                             
-                            if viewModel.expenses.isEmpty {
+                            if viewModel.filteredExpenses.isEmpty {
                                 HStack {
                                     Spacer()
                                     Text("Brak wydatków do wyświetlenia")
@@ -155,7 +169,7 @@ public struct DashboardView: View {
                                 .foregroundColor(.secondary)
                                 .tracking(1)
                             
-                            if viewModel.expenses.isEmpty {
+                            if viewModel.filteredExpenses.isEmpty {
                                 HStack {
                                     Spacer()
                                     Text("Brak operacji")
@@ -166,7 +180,7 @@ public struct DashboardView: View {
                                 }
                             } else {
                                 LazyVStack(spacing: 12) {
-                                    ForEach(viewModel.expenses) { expense in
+                                    ForEach(viewModel.filteredExpenses) { expense in
                                         ExpenseRowView(expense: expense)
                                             .transition(.asymmetric(
                                                 insertion: .move(edge: .top).combined(with: .opacity),
@@ -184,6 +198,17 @@ public struct DashboardView: View {
                     }
                     .padding(16)
                 }
+                .simultaneousGesture(
+                    DragGesture().onEnded { value in
+                        if abs(value.translation.width) > abs(value.translation.height) && abs(value.translation.width) > 50 {
+                            if value.translation.width < -50 {
+                                viewModel.changeMonth(by: 1)
+                            } else if value.translation.width > 50 {
+                                viewModel.changeMonth(by: -1)
+                            }
+                        }
+                    }
+                )
                 
                 // Floating Action Pill Button
                 Button {
@@ -208,9 +233,62 @@ public struct DashboardView: View {
                 }
                 .padding(.bottom, 24)
             }
-            .navigationTitle("Czerwiec 2026")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(viewModel.selectedMonthTitle)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(.indigo)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 10) {
+                        Button(action: { viewModel.changeMonth(by: -1) }) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.indigo)
+                                .frame(width: 32, height: 32)
+                                .background(Color.indigo.opacity(0.08))
+                                .clipShape(Circle())
+                        }
+                        
+                        Button(action: { viewModel.changeMonth(by: 1) }) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.indigo)
+                                .frame(width: 32, height: 32)
+                                .background(Color.indigo.opacity(0.08))
+                                .clipShape(Circle())
+                        }
+                    }
+                }
+            }
             .sheet(isPresented: $isShowingAddExpense) {
                 AddExpenseView()
+            }
+            .onAppear {
+                viewModel.fetchExpensesFromServer()
+            }
+            .alert("Błąd", isPresented: Binding(
+                get: { viewModel.errorMessage != nil },
+                set: { if !$0 { viewModel.errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
+            .alert("Ustaw budżet", isPresented: $isShowingBudgetAlert) {
+                TextField("Kwota", text: $budgetInput)
+                    .keyboardType(.decimalPad)
+                Button("Zapisz") {
+                    if let amount = Double(budgetInput.replacingOccurrences(of: ",", with: ".")) {
+                        viewModel.updateBudget(amount)
+                    }
+                }
+                Button("Anuluj", role: .cancel) {}
+            } message: {
+                Text("Wprowadź planowany budżet na bieżący miesiąc.")
             }
         }
     }

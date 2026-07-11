@@ -93,6 +93,34 @@ public class GRPCExpenseClient: APIClientProtocol {
         return success
     }
     
+    public func fetchBudget(month: String) async throws -> Double {
+        let responseData = try await performGRPCCall(
+            method: "/expense.ExpenseService/GetBudget",
+            payload: ["month": month]
+        )
+        
+        guard let response = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+              let amount = response["amount"] as? Double else {
+            throw GRPCError.decodingFailed
+        }
+        
+        return amount
+    }
+    
+    public func updateBudget(month: String, amount: Double) async throws -> Bool {
+        let responseData = try await performGRPCCall(
+            method: "/expense.ExpenseService/SetBudget",
+            payload: ["month": month, "amount": amount]
+        )
+        
+        guard let response = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+              let success = response["success"] as? Bool else {
+            throw GRPCError.decodingFailed
+        }
+        
+        return success
+    }
+    
     private func performGRPCCall(method: String, payload: [String: Any]) async throws -> Data {
         let portString = (port == 80 || port == 443) ? "" : ":\(port)"
         guard let url = URL(string: "\(scheme)://\(host)\(portString)\(method)") else {

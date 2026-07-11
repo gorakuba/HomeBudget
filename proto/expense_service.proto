@@ -41,9 +41,30 @@ message DeleteExpenseResponse {
   bool success = 1;
 }
 
+// Request and Response for managing monthly budget
+message GetBudgetRequest {
+  string month = 1; // format YYYY-MM
+}
+
+message GetBudgetResponse {
+  double amount = 1;
+}
+
+message SetBudgetRequest {
+  string month = 1; // format YYYY-MM
+  double amount = 2;
+}
+
+message SetBudgetResponse {
+  bool success = 1;
+}
+
 // The ExpenseService providing CRUD operations
 service ExpenseService {
   rpc CreateExpense (CreateExpenseRequest) returns (CreateExpenseResponse);
   rpc GetExpenses (GetExpensesRequest) returns (GetExpensesResponse);
   rpc DeleteExpense (DeleteExpenseRequest) returns (DeleteExpenseResponse);
+  rpc GetBudget (GetBudgetRequest) returns (GetBudgetResponse);
+  rpc SetBudget (SetBudgetRequest) returns (SetBudgetResponse);
 }
+

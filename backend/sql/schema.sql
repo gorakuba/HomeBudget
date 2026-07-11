@@ -14,3 +14,10 @@ CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses (date DESC);
 
 -- Index for category-based summaries
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses (category);
+
+CREATE TABLE IF NOT EXISTS monthly_budgets (
+    month VARCHAR(7) PRIMARY KEY, -- format YYYY-MM
+    amount NUMERIC(12, 2) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+

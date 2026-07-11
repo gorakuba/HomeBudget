@@ -14,11 +14,15 @@ type MockExpenseRepository struct {
 	GetAllErr    error
 	DeleteErr    error
 	DeleteResult bool
+	Budgets      map[string]*models.Budget
+	GetBudgetErr error
+	SetBudgetErr error
 }
 
 func NewMockExpenseRepository() *MockExpenseRepository {
 	return &MockExpenseRepository{
 		Expenses: make(map[string]*models.Expense),
+		Budgets:  make(map[string]*models.Budget),
 	}
 }
 
@@ -52,6 +56,24 @@ func (m *MockExpenseRepository) Delete(ctx context.Context, id string) (bool, er
 		return true, nil
 	}
 	return m.DeleteResult, nil
+}
+
+func (m *MockExpenseRepository) GetBudget(ctx context.Context, month string) (*models.Budget, error) {
+	if m.GetBudgetErr != nil {
+		return nil, m.GetBudgetErr
+	}
+	if b, exists := m.Budgets[month]; exists {
+		return b, nil
+	}
+	return &models.Budget{Month: month, Amount: 0}, nil
+}
+
+func (m *MockExpenseRepository) SetBudget(ctx context.Context, budget *models.Budget) (bool, error) {
+	if m.SetBudgetErr != nil {
+		return false, m.SetBudgetErr
+	}
+	m.Budgets[budget.Month] = budget
+	return true, nil
 }
 
 var _ repository.ExpenseRepository = (*MockExpenseRepository)(nil)

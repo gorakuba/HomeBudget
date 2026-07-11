@@ -36,3 +36,12 @@ targets:
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.homebudget.app.tests
       GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  HomeBudget:
+    build:
+      targets:
+        HomeBudget: all
+    test:
+      targets:
+        - HomeBudgetTests
